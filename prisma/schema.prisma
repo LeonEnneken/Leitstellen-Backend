@@ -1,0 +1,407 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model AuditLog {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  senderId    String
+  targetId    String?
+  type        AuditLogType
+  description String
+  changes     String[]
+  createdAt   DateTime
+
+  @@index([senderId, targetId, type])
+}
+
+enum AuditLogType {
+  ADMIN_ADDED
+  ADMIN_REMOVED
+
+  CONTROL_CENTER_CREATED
+  CONTROL_CENTER_PATCHED
+  CONTROL_CENTER_PATCHED_STATUS
+  CONTROL_CENTER_PATCHED_VEHICLE
+  CONTROL_CENTER_DELETED
+
+  CONTROL_CENTER_MEMBER_ADDED
+  CONTROL_CENTER_MEMBER_REMOVED
+
+  DEPARTMENT_CREATED
+  DEPARTMENT_PATCHED
+  DEPARTMENT_DELETED
+
+  GROUP_CREATED
+  GROUP_PATCHED
+  GROUP_DELETED
+
+  MEMBER_PATCHED
+  MEMBER_HIRED
+  MEMBER_TERMINATED
+
+  MEMBER_PROMOTED
+  MEMBER_DEMOTED
+
+  MEMBER_DEPARTMENT_PATCHED
+
+  RADIO_CODE_CREATED
+  RADIO_CODE_PATCHED
+  RADIO_CODE_DELETED
+
+  SETTINGS_PATCHED
+
+  SETTINGS_HEADER_DETAILS_CREATED
+  SETTINGS_HEADER_DETAILS_PATCHED
+  SETTINGS_HEADER_DETAILS_DELETED
+
+  SETTINGS_CONTROL_CENTER_STATUS_CREATED
+  SETTINGS_CONTROL_CENTER_STATUS_PATCHED
+  SETTINGS_CONTROL_CENTER_STATUS_DELETED
+
+  VEHICLE_CREATED
+  VEHICLE_PATCHED
+  VEHICLE_DELETED
+
+  USER_PATCHED
+  USER_PATCHED_OTHER
+
+  USER_STATUS
+  USER_STATUS_OTHER
+
+  PUNISHMENT_CATEGORY_CREATED
+  PUNISHMENT_CATEGORY_PATCHED
+  PUNISHMENT_CATEGORY_DELETED
+
+  PUNISHMENT_CREATED
+  PUNISHMENT_PATCHED
+  PUNISHMENT_DELETED
+
+  PUNISHMENT_ITEM_CREATED
+  PUNISHMENT_ITEM_PATCHED
+  PUNISHMENT_ITEM_DELETED
+
+  FILE_SHEET_CREATED
+  FILE_SHEET_PATCHED
+  FILE_SHEET_DELETED
+
+  FILE_SHEET_APPROVED
+  FILE_SHEET_CANCELED
+}
+
+// Scheme ControlCenters
+
+model ControlCenter {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  label      String
+  type       String
+  color      String?
+  hasStatus  Boolean
+  status     String?
+  hasVehicle Boolean
+  vehicle    String?
+  members    String[]
+  maxMembers Int      @db.Int
+  updatedAt  DateTime
+  createdAt  DateTime
+
+  @@index([id, label, type, createdAt])
+}
+
+// Scheme Departments
+
+model Department {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  permissions String[]
+  data        Json?
+  default     Boolean
+  updatedAt   DateTime
+  createdAt   DateTime
+
+  @@index([id, name, default, createdAt])
+}
+
+// Scheme FileSheet
+
+model FileSheet {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId             String
+  targetId             String
+  punishmentId         String
+  title                String
+  strikes              Int      @db.Int
+  additionalPunishment String
+  notes                String?
+  attachments          String[]
+
+  additionalPunishmentFinished Boolean
+  approved                     Boolean
+  canceled                     Boolean
+
+  updatedAt DateTime
+  createdAt DateTime
+
+  @@index([id, senderId, targetId, punishmentId, createdAt])
+}
+
+// Scheme Groups
+
+model Group {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  uniqueId       Int      @db.Int
+  name           String
+  shortName      String?
+  division       String?
+  permissions    String[]
+  data           Json?
+  showInOverview Boolean?
+  default        Boolean
+  updatedAt      DateTime
+  createdAt      DateTime
+
+  @@index([id, uniqueId, name, default, createdAt])
+}
+
+// Scheme Member
+
+model Member {
+  id                String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String
+  groupId           String
+  departmentId      String?
+  departmentIds     String[]
+  dutyNumber        String?
+  notes             String?
+  data              Json?
+  hiredDate         DateTime
+  lastPromotionDate DateTime
+  terminated        Boolean
+  terminatedAt      DateTime?
+  updatedAt         DateTime
+  createdAt         DateTime
+
+  @@unique([userId])
+  @@index([id, userId, groupId, createdAt])
+}
+
+// Scheme Punishments
+
+model PunishmentCategory {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  uniqueId    Int          @db.Int
+  label       String
+  punishments Punishment[]
+  updatedAt   DateTime
+  createdAt   DateTime
+
+  @@index([id, uniqueId, createdAt])
+}
+
+model Punishment {
+  id          String             @id @default(auto()) @map("_id") @db.ObjectId
+  category    PunishmentCategory @relation(fields: [categoryId], references: [id])
+  categoryId  String             @db.ObjectId
+  uniqueId    Int                @db.Int
+  description String
+  items       PunishmentItem[]
+  updatedAt   DateTime
+  createdAt   DateTime
+
+  @@index([id, categoryId, uniqueId, createdAt])
+}
+
+model PunishmentItem {
+  id                   String     @id @default(auto()) @map("_id") @db.ObjectId
+  punishment           Punishment @relation(fields: [punishmentId], references: [id])
+  punishmentId         String     @db.ObjectId
+  stage                Int        @db.Int
+  strikes              Int        @db.Int
+  additionalPunishment String
+  updatedAt            DateTime
+  createdAt            DateTime
+
+  @@index([id, punishmentId, stage, createdAt])
+}
+
+// Scheme RadioCodes
+
+model RadioCode {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  type        RadioCodeType
+  code        String
+  description String
+  updatedAt   DateTime
+  createdAt   DateTime
+
+  @@unique([code])
+  @@index([id, code, createdAt])
+}
+
+enum RadioCodeType {
+  NORMAL
+  INFO
+  WARN
+}
+
+// Scheme Settings
+
+model Settings {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  organisationName String
+  logoUrl          String
+  baseUrl          String
+  socketUrl        String
+  loginPage        SettingsLoginPage
+
+  fieldOfStudy Json?
+  trainings    Json?
+
+  options SettingsOptions
+
+  controlCenterStatus SettingsControlCenterStatus[]
+
+  maintenance Boolean @default(false)
+
+  updatedAt DateTime
+  createdAt DateTime
+
+  @@index([updatedAt, createdAt])
+}
+
+model SettingsControlCenterStatus {
+  id         String                           @id @default(auto()) @map("_id") @db.ObjectId
+  settings   Settings                         @relation(fields: [settingsId], references: [id])
+  settingsId String                           @db.ObjectId
+  label      String
+  value      String
+  color      SettingsControlCenterStatusColor
+  updatedAt  DateTime
+  createdAt  DateTime
+
+  @@index([id, settingsId, label, createdAt])
+}
+
+enum SettingsControlCenterStatusColor {
+  BLUE
+  RED
+  AMBER
+  GREEN
+}
+
+type SettingsLoginPage {
+  title       String
+  description String
+}
+
+type SettingsOptions {
+  hasDutyNumber Boolean @default(false)
+}
+
+// Scheme SettingsHeaderDetails
+
+model SettingsHeaderDetails {
+  id        String                    @id @default(auto()) @map("_id") @db.ObjectId
+  index     Int                       @db.Int
+  type      SettingsHeaderDetailsType
+  label     String
+  value     String
+  color     String
+  updatedAt DateTime
+  createdAt DateTime
+
+  @@index([id, index, updatedAt, createdAt])
+}
+
+enum SettingsHeaderDetailsType {
+  TOP
+  BOTTOM
+}
+
+// Scheme SocketConnections
+
+model SocketConnection {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String
+  socketId  String
+  createdAt DateTime
+
+  @@unique([userId])
+  @@index([id, userId, socketId])
+}
+
+// Scheme TimeTrackings
+
+model TimeTracking {
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String
+  controlCenterId String
+  startDate       Int     @db.Long
+  endDate         Int?    @db.Long
+  finished        Boolean
+
+  @@index([id, userId, controlCenterId, finished])
+}
+
+// Scheme Vehicles
+
+model Vehicle {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  licensePlate String
+  groupId      String?
+  departmentId String?
+  updatedAt    DateTime
+  createdAt    DateTime
+
+  @@index([id, licensePlate, createdAt])
+}
+
+// Scheme User
+
+model User {
+  id        String       @id @default(auto()) @map("_id") @db.ObjectId
+  account   UserAccount
+  details   UserDetails?
+  role      UserRole
+  status    UserStatus
+  updatedAt DateTime
+  createdAt DateTime
+
+  @@unique([account.id])
+  @@index([id, account.id, role, createdAt])
+}
+
+type UserAccount {
+  id            String
+  username      String
+  discriminator String
+  avatar        String
+}
+
+type UserDetails {
+  id          String
+  firstName   String
+  lastName    String
+  phoneNumber String
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMINISTRATOR
+}
+
+enum UserStatus {
+  ON_DUTY
+  OFF_DUTY
+  AWAY_FROM_KEYBOARD
+  OFFLINE
+}
